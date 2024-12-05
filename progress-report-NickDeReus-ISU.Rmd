@@ -9,3 +9,48 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Begin
+```{r}
+library(rvest)
+library(tidyverse)
+# install.packages('Lahman')
+library(Lahman)
+```
+
+```{r}
+url <- "https://www.baseball-reference.com/awards/hof_2024.shtml"
+html <- read_html(url)
+html
+```
+```{r}
+HoF2024 <- html_table(html)[[1]]
+
+head(HallOfFame)
+head(HoF2024)
+
+```
+```{r}
+createID <- function(Name){
+  # Space_Index <- match(" ", Name)
+  Name <- as.character(Name)
+  firstPart <-  strsplit(Name, " ")[[1]][1]
+  secondPart <- strsplit(Name, " ")[[1]][2]
+  
+  return( paste( tolower(firstPart), tolower( secondPart)))
+}
+
+HoF2024_clean <- HoF2024  %>% data.frame() %>% summarize(
+  Name = Var.2,
+  Votes = Var.4 %>% as.numeric(),
+  Percent_vote = Var.5 %>% parse_number()/100,
+  playerID = Var.2 %>% createID() %>% paste("01"),
+) %>% 
+  filter(Name != "Name")
+
+HoF2024_clean
+```
+```{r}
+Str <- "Apple Bottom"
+
+strsplit(Str, " ")[[1]][1]
+```
+
