@@ -1,0 +1,76 @@
+# INSTALLING PACKAGES
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+# install.packages('Lahman')
+library(Lahman)
+#install.packages('rvest')
+library(rvest)
+```
+
+```{r}
+HallOfFame
+```
+
+```{r}
+url <- "https://en.wikipedia.org/wiki/2023_Baseball_Hall_of_Fame_balloting"
+html <- read_html(url)
+html
+
+tables <- html %>% html_table(fill=TRUE)
+
+bbwaa <- tables[[3]]  # candidates on the BBWAA Ballot
+vet1 <- tables[[5]] # Early Baseball Era Committee
+vet2 <- tables[[6]] # Golden Days Era Committee
+bbwaa %>% head()
+
+url <- "https://bbwaa.com/23-hof/#votingtable"
+html <- read_html(url)
+
+tables <- html %>% html_table(fill = TRUE)
+bbwaa23 <- tables[[1]]
+names(bbwaa23)[1] <- "player_name"
+
+bbwaa <- bbwaa23 %>% mutate(
+  yearID = 2023,
+  votedBy = "BBWAA",
+  ballots = 389,
+  needed = 292,
+  inducted = ifelse(Votes>=292, "Y", "N"),
+  category = NA, # don't know yet
+  needed_note = NA # not sure what would go here
+) %>% rename(
+  votes = Votes
+) %>% select(-Percent, -`Years on ballot`)
+
+
+player_id <- People %>% 
+  mutate(
+    player_name = paste(nameFirst, nameLast)
+  ) %>% 
+  select(playerID, player_name)
+
+bbwaa %>% anti_join(player_id, 
+                    by = "player_name")
+
+player_id %>% 
+  filter(str_detect(player_name, "Hardy"))
+player_id <- player_id %>% 
+  mutate(
+    player_name = str_replace(player_name,
+                              "\\. ",
+                              ".")
+  )
+
+HoF23 <- bbwaa %>% left_join(player_id, 
+                    by = "player_name") %>% 
+  select(
+    names(HallOfFame)
+  )
+HoF23
+```
+```{r}
+vet1
+vet2
+```
+
