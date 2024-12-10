@@ -1,0 +1,117 @@
+---
+title: "Lab4_Tam_Minh_Nguyen"
+author: "Tam Minh Nguyen"
+date: "2024-12-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(Lahman)
+head(HallOfFame, 10)
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+HallOfFame %>% 
+  ggplot(aes(x = yearID, fill = inducted)) +
+  geom_bar() +
+  xlim(c(1936, 2022))
+
+```
+
+```{r}
+
+library(rvest)
+
+url <- "https://www.baseball-reference.com/awards/hof_2024.shtml"
+webpage <- read_html(url)
+
+hall_of_fame_raw <- webpage %>%
+  html_node("table") %>% # Adjust the CSS selector if needed
+  html_table()
+
+head(hall_of_fame_raw)
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+colnames(hall_of_fame_raw) <- c(
+  "Rk", "Name", "YoB", "Votes", "PercentVote", "HOFm", "HOFs", 
+  "Yrs", "WAR", "WAR7", "JAWS", "Jpos", 
+  "Bat_G", "Bat_AB", "Bat_R", "Bat_H", "Bat_HR", "Bat_RBI", "Bat_SB", 
+  "Bat_BB", "Bat_BA", "Bat_OBP", "Bat_SLG", "Bat_OPS", "Bat_OPSPlus", 
+  "Pit_W", "Pit_L", "Pit_ERA", "Pit_ERAPlus", "Pit_WHIP", "Pit_G", "Pit_GS", 
+  "Pit_SV", "Pit_IP", "Pit_H", "Pit_HR", "Pit_BB", "Pit_SO", "PosSummary"
+)
+
+head(hall_of_fame_raw)
+
+```
+
+```{r}
+hall_of_fame_clean <- hall_of_fame_raw %>%
+  filter(!is.na(Name) & Name != "Name") %>% 
+  mutate(
+    YoB = gsub("[^0-9]", "", YoB),            
+    Votes = as.numeric(Votes),               
+    PercentVote = as.numeric(gsub("%", "", PercentVote)) / 100, 
+    inducted = ifelse(PercentVote >= 0.75, "Y", "N"), 
+    category = "Player"                      
+  ) %>%
+  select(
+    Name, YoB, Votes, PercentVote, inducted, category, WAR, WAR7, JAWS
+  ) %>%
+  rename(
+    playerID = Name, 
+    yearID = YoB, 
+    needed_pct = PercentVote
+  )
+head(hall_of_fame_clean)
+```
+
+```{r}
+library(Lahman)
+str(hall_of_fame_clean)
+str(HallOfFame)
+```
+
+
+```{r}
+library(ggplot2)
+hall_of_fame_clean <- hall_of_fame_clean %>%
+  mutate(yearID = as.integer(yearID))
+updated_HallOfFame <- bind_rows(HallOfFame, hall_of_fame_clean)
+head(updated_HallOfFame)
+
+```
+```{r}
+updated_HallOfFame <- bind_rows(HallOfFame, hall_of_fame_clean)
+head(updated_HallOfFame)
+
+```
+
+```{r}
+updated_HallOfFame %>%
+  ggplot(aes(x = yearID, fill = inducted)) +
+  geom_bar() +
+  xlim(c(1936, 2024)) + 
+  labs(
+    x = "Year",
+    y = "Count",
+    fill = "Inducted"
+  )
+```
+
+```{r}
+write.csv(updated_HallOfFame, "HallOfFame_MinhNguyen.csv", row.names = FALSE)
+save(updated_HallOfFame, file = "HallOfFame_MinhNguyen.csv")
+```
+
