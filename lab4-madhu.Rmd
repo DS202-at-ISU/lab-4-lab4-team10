@@ -2,7 +2,7 @@
 title: "Progress-report-madhu-babu-avula"
 author: "Madhu Babu Avula"
 date: "2024-12-10"
-output: html_ocument
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -10,12 +10,153 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
+```{r echo=FALSE, include=FALSE}
+
+# loadind the libraries
+library(rvest)
+library(tidyverse)
+library(Lahman)
+library(janitor)
+
+```
+
+
+# 1. Data Scraping and Loading
+
+```{r}
+# Load the HTML file from the web
+data_url <- "https://www.baseball-reference.com/awards/hof_2024.shtml"
+data_html <- read_html(data_url)
+
+# Extract all tables from the HTML file
+tables <- data_html %>% html_table(fill = TRUE)
+
+# Get the first table
+first_table <- tables[[1]]
+
+# Assign the first row as column names
+colnames(first_table) <- first_table[1, ]
+
+# Remove the first row as it is now the header
+first_table <- first_table[-1, ]
+
+# Display the cleaned table
+head(first_table)
+
+
+```
+
+# 2. Data Cleaning and Formatting
 ```{r}
 
+colnames(first_table) <- make.unique(colnames(first_table))
 
-# read the fike
+# Ensure numeric columns are properly formatted
+first_table <- first_table %>%
+  mutate(
+    Votes = as.numeric(Votes),
+    Percent_Vote = as.numeric(sub("%", "", `%vote`)), # Use `%vote` as the column name
+    WAR = as.numeric(WAR),
+    WAR7 = as.numeric(WAR7),
+    JAWS = as.numeric(JAWS)
+  )
 
+
+# Display the updated table
+head(first_table)
+
+
+# Check the structure of the cleaned data
+str(first_table)
+
+```
+# 3. Combining Data with Lahman’s HallOfFame
+
+
+```{r}
+
+# Merge the new data with the HallOfFame data from the Lahman package
+combined_data <- HallOfFame %>%
+  left_join(
+    first_table,
+    by = c("playerID" = "Name") 
+  )
+
+# Display the combined data
+head(combined_data)
 
 
 
 ```
+
+
+# 4. Data Analysis and Visualization
+
+**4.1 Bar Chart: Inductions Over Time**
+
+```{r}
+
+
+# Count the number of inducted players per year
+induction_counts <- HallOfFame %>%
+  filter(inducted == "Y") %>%
+  group_by(yearID) %>%
+  summarise(inductions = n())
+
+# Plot the data
+ggplot(induction_counts, aes(x = yearID, y = inductions)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(
+    title = "Number of Players Inducted Over Time",
+    x = "Year",
+    y = "Number of Inducted Players"
+  ) +
+  theme_minimal()
+
+
+
+```
+**Bar Chart: "Number of Players Inducted Over Time**
+The bar chart illustrates the trends in player inductions into the Hall of Fame over time. The data reveals fluctuations in the number of players inducted each year, with some years showing peaks (e.g., early 2000s) and others exhibiting no inductions. These variations could be influenced by the eligibility of prominent players or changes in voting criteria.
+
+
+**4.2 Scatter Plot: Votes vs. WAR**
+
+
+```{r}
+ggplot(first_table, aes(x = WAR, y = Votes)) +
+  geom_point(color = "darkgreen") +
+  labs(
+    title = "Votes vs. WAR",
+    x = "WAR (Wins Above Replacement)",
+    y = "Votes"
+  ) +
+  theme_light()
+
+
+
+```
+
+**Scatter Plot: "Votes vs. WAR"**
+
+The scatter plot examines the relationship between a player's WAR (Wins Above Replacement) and the number of votes they received for Hall of Fame induction. A general upward trend is evident, suggesting that players with higher WAR tend to garner more votes. However, there are notable outliers, indicating that factors beyond WAR may also significantly influence voting decisions.
+
+# 5. Summary and Insight
+
+```{r}
+
+
+summary_stats <- first_table %>%
+  summarise(
+    Avg_WAR = mean(WAR, na.rm = TRUE),
+    Avg_WAR7 = mean(WAR7, na.rm = TRUE),
+    Avg_JAWS = mean(JAWS, na.rm = TRUE)
+  )
+
+# Display summary statistics
+summary_stats
+
+```
+These summary statistics reflect the average performance metrics of players considered for induction. WAR measures a player's overall contribution, WAR7 highlights their peak performance over seven years, and JAWS combines these measures to evaluate Hall of Fame worthiness. These averages provide benchmarks for understanding the typical profile of Hall of Fame candidates.
+
+
