@@ -1,76 +1,143 @@
 # INSTALLING PACKAGES
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+#install.packages('tidyverse')
 library(tidyverse)
-# install.packages('Lahman')
+#install.packages('Lahman')
 library(Lahman)
 #install.packages('rvest')
 library(rvest)
+#install.packages("stringi")
+library(stringi)
 ```
 
 ```{r}
-HallOfFame
+head(HallOfFame)
+head(People)
+str(HallOfFame)
 ```
 
 ```{r}
-url <- "https://en.wikipedia.org/wiki/2023_Baseball_Hall_of_Fame_balloting"
+url <- "https://www.baseball-reference.com/awards/hof_2024.shtml"
 html <- read_html(url)
-html
+tables <- html_table(html)
+tables[[1]]
+```
 
-tables <- html %>% html_table(fill=TRUE)
+```{r}
+bbwaa <- tables[[1]]
+actual_col_names <- bbwaa[1,]
+colnames(bbwaa) <- actual_col_names
+bbwaa <- bbwaa[-1,]
+names(bbwaa) <- make.unique(names(bbwaa))
+bbwaa
+```
 
-bbwaa <- tables[[3]]  # candidates on the BBWAA Ballot
-vet1 <- tables[[5]] # Early Baseball Era Committee
-vet2 <- tables[[6]] # Golden Days Era Committee
-bbwaa %>% head()
-
-url <- "https://bbwaa.com/23-hof/#votingtable"
-html <- read_html(url)
-
-tables <- html %>% html_table(fill = TRUE)
-bbwaa23 <- tables[[1]]
-names(bbwaa23)[1] <- "player_name"
-
-bbwaa <- bbwaa23 %>% mutate(
-  yearID = 2023,
-  votedBy = "BBWAA",
-  ballots = 389,
-  needed = 292,
-  inducted = ifelse(Votes>=292, "Y", "N"),
-  category = NA, # don't know yet
-  needed_note = NA # not sure what would go here
-) %>% rename(
+```{r}
+bbwaa_formatted <- bbwaa %>% rename(
   votes = Votes
-) %>% select(-Percent, -`Years on ballot`)
+) %>% mutate(
+  yearID = 2024,
+  votedBy = "BBWAA",
+  ballots = 385,
+  needed = 289,
+  inducted = ifelse(votes>=289, "Y", "N"),
+  category = "Player",
+  needed_note = NA 
+) %>% select(Name,yearID,votedBy,ballots,needed,votes,inducted,category,needed_note)
+
+bbwaa_formatted
+```
+
+```{r}
+bbwaa_formatted$Name <- bbwaa_formatted$Name %>%
+  gsub("^X-", "", .) %>%
+  stri_trans_general("Latin-ASCII")
+
+bbwaa_formatted
+```
 
 
+```{r}
+str(bbwaa_formatted)
+```
+
+```{r}
+bbwaa_formatted$votes <- as.numeric(bbwaa_formatted$votes)
+bbwaa_formatted$inducted <- as.factor(bbwaa_formatted$inducted)
+bbwaa_formatted$category <- as.factor(bbwaa_formatted$category)
+bbwaa_formatted$needed_note <- as.character(bbwaa_formatted$needed_note)
+str(bbwaa_formatted)
+```
+
+```{r}
 player_id <- People %>% 
   mutate(
-    player_name = paste(nameFirst, nameLast)
+    Name = paste(nameFirst, nameLast)
   ) %>% 
-  select(playerID, player_name)
+  select(playerID, Name)
 
-bbwaa %>% anti_join(player_id, 
-                    by = "player_name")
-
-player_id %>% 
-  filter(str_detect(player_name, "Hardy"))
 player_id <- player_id %>% 
   mutate(
-    player_name = str_replace(player_name,
+    player_name = str_replace(Name,
                               "\\. ",
                               ".")
   )
 
-HoF23 <- bbwaa %>% left_join(player_id, 
-                    by = "player_name") %>% 
+final_bbwaa <- bbwaa_formatted %>% left_join(player_id, 
+                    by = "Name") %>% 
+  distinct(player_name, .keep_all = TRUE) %>%
   select(
     names(HallOfFame)
   )
-HoF23
+final_bbwaa
 ```
+
+
 ```{r}
-vet1
-vet2
+url <- "https://en.wikipedia.org/wiki/2024_Baseball_Hall_of_Fame_balloting"
+html <- read_html(url)
+tables <- html %>% html_table(fill=TRUE)
+veterans <- tables[[5]]
+veterans
+```
+
+```{r}
+veterans_formatted <- veterans %>% rename(
+  votes = Votes, category = Role, Name = Candidate
+) %>% mutate(
+  yearID = 2024,
+  votedBy = "Veterans",
+  ballots = 16,
+  needed = 12,
+  inducted = ifelse(votes>=12, "Y", "N"),
+  needed_note = NA 
+) %>% select(Name,yearID,votedBy,ballots,needed,votes,inducted,category,needed_note)
+
+veterans_formatted
+```
+
+```{r}
+veterans_formatted$votes <- as.numeric(veterans_formatted$votes)
+veterans_formatted$inducted <- as.factor(veterans_formatted$inducted)
+veterans_formatted$category <- as.factor(veterans_formatted$category)
+veterans_formatted$needed_note <- as.character(veterans_formatted$needed_note)
+str(veterans_formatted)
+```
+
+```{r}
+
+final_veterans <- veterans_formatted %>% left_join(player_id, 
+                    by = "Name") %>% 
+  distinct(player_name, .keep_all = TRUE) %>%
+  select(
+    names(HallOfFame)
+  )
+final_veterans
+```
+
+```{r}
+result <- rbind(HallOfFame, final_bbwaa, final_veterans)
+head(result)
 ```
 
