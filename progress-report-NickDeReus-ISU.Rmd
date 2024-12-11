@@ -14,6 +14,7 @@ library(rvest)
 library(tidyverse)
 # install.packages('Lahman')
 library(Lahman)
+data(dataframe = HallOfFame, package = "Lahman")
 ```
 
 ```{r}
@@ -25,32 +26,48 @@ html
 HoF2024 <- html_table(html)[[1]]
 
 head(HallOfFame)
-head(HoF2024)
+HoF2024 %>% data.frame %>% head()
 
 ```
 ```{r}
-createID <- function(Name){
+createID <- function(Name, othervector){
   # Space_Index <- match(" ", Name)
   Name <- as.character(Name)
+  Name <- str_replace(Name, "X-", "")
   firstPart <-  strsplit(Name, " ")[[1]][1]
   secondPart <- strsplit(Name, " ")[[1]][2]
   
-  return( paste( tolower(firstPart), tolower( secondPart)))
+  ID <- paste( tolower( secondPart), tolower(substr( firstPart, 1,2)), sep = "")
+  
+  # othervector <- othervector$PlayerID
+  
+  # if (!paste(ID, "01", sep = "") %in% othervector) return( paste(ID, "01", sep = "") )
+  # else if (!paste(ID, "02", sep = "") %in% othervector) return( paste(ID, "02", sep = "") )
+  # else if (!paste(ID, "03", sep = "") %in% othervector) return( paste(ID, "03", sep = "") )
+  
+  return( paste(ID, "01", sep = "") )
 }
 
-HoF2024_clean <- HoF2024  %>% data.frame() %>% summarize(
-  Name = Var.2,
-  Votes = Var.4 %>% as.numeric(),
-  Percent_vote = Var.5 %>% parse_number()/100,
-  playerID = Var.2 %>% createID() %>% paste("01"),
-) %>% 
-  filter(Name != "Name")
+playerIDVector <- pull(HallOfFame, playerID)
 
+HoF2024_clean <- HoF2024 %>% data.frame() %>% group_by(Var.2) %>% filter(Var.2 != "Name") %>% summarize(
+  playerID = Var.2 %>% createID( playerIDVector),
+  votes = Var.4 %>% as.numeric(),
+  # Vote_Percent = Var.5 %>% parse_number()/100,
+  # ballots = round(votes / Vote_Percent),
+  # needed = ceiling(ballots * .75),
+  ballots = 385,
+  needed = 289,
+  inducted = if_else(votes > needed, "Y", "N"),
+  yearID = 2024
+)
+
+HoF2024_clean<- HoF2024_clean %>% select(-Var.2)
 HoF2024_clean
 ```
 ```{r}
-Str <- "Apple Bottom"
+HallOfFame %>% bind_rows(HoF2024_clean)
 
-strsplit(Str, " ")[[1]][1]
+
 ```
 
