@@ -66,8 +66,11 @@ HoF2024_clean<- HoF2024_clean %>% select(-Var.2)
 HoF2024_clean
 ```
 ```{r}
-HallOfFame %>% bind_rows(HoF2024_clean)
+HoFComplete <- HallOfFame %>% bind_rows(HoF2024_clean)
 
+```
 
+```{r}
+write.csv(HoFComplete ,'HallofFame.csv')
 ```
 
